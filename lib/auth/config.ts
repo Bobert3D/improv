@@ -21,6 +21,11 @@ export const auth = betterAuth({
 				defaultValue: 0,
 				input: false,
 			},
+			slackId: {
+				type: "string",
+				required: false,
+				input: false,
+			},
 		},
 	},
 	plugins: [
@@ -32,6 +37,10 @@ export const auth = betterAuth({
 					clientSecret: process.env.HACKCLUB_CLIENT_SECRET!,
 					discoveryUrl:
 						"https://auth.hackclub.com/.well-known/openid-configuration",
+					scopes: ["openid", "profile", "email", "slack_id"],
+					mapProfileToUser: (profile) => ({
+						slackId: profile.slack_id,
+					}),
 				},
 				{
 					providerId: "hackatime",
@@ -44,6 +53,7 @@ export const auth = betterAuth({
 					mapProfileToUser: (profile) => ({
 						name: profile.slack_id,
 						email: profile.emails[0],
+						slackId: profile.slack_id,
 					}),
 				},
 			],

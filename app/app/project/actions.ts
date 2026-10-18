@@ -6,11 +6,13 @@ import z from "zod";
 import {
 	createProject,
 	deleteProject,
+	getProject,
 	updateProject,
 	updateProjectShipState,
 } from "@/lib/projects/service";
+import { submitShip, withdrawShip } from "@/lib/ari/service";
 import extract from "@/lib/utils/form";
-import { errParse, ok, type Result } from "@/lib/utils/result";
+import { err, errParse, ok, type Result } from "@/lib/utils/result";
 
 const CreateProjectFormSchema = z.object({
 	name: z.string().nullish(),
@@ -94,11 +96,32 @@ export async function updateProjectShipStateAction(
 		return errParse(parse);
 	}
 
-	const result = await updateProjectShipState(
-		session.data.user.id,
-		parse.data.id,
-		parse.data,
-	);
+	const { id, shipState } = parse.data;
+	const user = session.data.user;
+
+	const project = await getProject(user.id, id);
+	if (!project.ok) return project;
+
+	if (project.data.shipState === shipState) return ok(null);
+
+	if (shipState) {
+		if (!user.slackId) {
+			return err([
+				"Your Slack ID is missing. Please sign out and sign back in.",
+			]);
+		}
+
+		const ship = await submitShip({
+			project: project.data,
+			user: { email: user.email, name: user.name, slackId: user.slackId },
+		});
+		if (!ship.ok) return ship;
+	} else {
+		const withdrawn = await withdrawShip(id);
+		if (!withdrawn.ok) return withdrawn;
+	}
+
+	const result = await updateProjectShipState(user.id, id, parse.data);
 	if (result.ok) {
 		revalidatePath("/app/project");
 	}

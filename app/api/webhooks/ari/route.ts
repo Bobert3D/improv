@@ -1,7 +1,7 @@
 import { Ari } from "@hackclub/ari";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { ariDeliveries, projects } from "@/lib/db/schema";
+import { ariDelivery, project } from "@/lib/db/schema";
 
 const STATUS: Record<string, string> = {
     "review.approved": "approved",
@@ -14,19 +14,20 @@ const STATUS: Record<string, string> = {
 export const POST = Ari.webhooks.createHandler({
     secret: process.env.ARI_WEBHOOK_SECRET!,
     async on_event(event, context) {
-        const seen = await db.query.ariDeliveries.findFirst({
-            where: eq(ariDeliveries.id, context.delivery_id),
-        });
-        if (seen) return;
+        const seen = await db
+            .select()
+            .from(ariDelivery)
+            .where(eq(ariDelivery.id, context.delivery_id));
+        if (seen.length > 0) return;
 
         const status = STATUS[event.event];
         if (status && "external_id" in event) {
             await db
-                .update(projects)
+                .update(project)
                 .set({ reviewStatus: status })
-                .where(eq(projects.id, event.external_id));
+                .where(eq(project.id, event.external_id));
         }
 
-        await db.insert(ariDeliveries).values({ id: context.delivery_id });
+        await db.insert(ariDelivery).values({ id: context.delivery_id });
     },
 });

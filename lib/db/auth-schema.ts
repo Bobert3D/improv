@@ -24,6 +24,7 @@ export const user = pgTable("user", {
 	banReason: text("ban_reason"),
 	banExpires: timestamp("ban_expires"),
 	uptimeBalance: integer("uptime_balance").default(0).notNull(),
+	slackId: text("slack_id"),
 });
 
 export const session = pgTable(
